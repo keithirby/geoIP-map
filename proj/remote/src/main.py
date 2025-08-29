@@ -55,14 +55,17 @@ def main():
     # 4. Start the loop and print countries and their major IP block address 
     # pulled from the database
     while not INTERRUPTED:
+        # OPTION 1: totally random country + IP ADDR
         # Get country_name : geoname_id pairs
-        #stmt = text("SELECT country_name, geoname_id FROM countries")
-        #country_rows = session_countries.execute(stmt).fetchall()
+        stmt = text("SELECT country_name, geoname_id FROM countries")
+        country_rows = session_countries.execute(stmt).fetchall()
         # Picks random country from the database
-        #country_list = [(row[0], row[1]) for row in country_rows]
-
-        # Pick a random (country, geoname_id)
-        country_name, geoname_id = random.choice(countries_list)
+        rnd_country_list = [(row[0], row[1]) for row in country_rows]
+        country_name, geoname_id = random.choice(rnd_country_list)
+        #-------------------------------------------------------
+        # OPTION 2: Random ish country from pre-defined list
+        #country_name, geoname_id = random.choice(countries_list)
+        # Helper prints for debugging
         # geoname_id print for debugging
         #print(f"Random country: {country_name} (geoname_id={geoname_id})")
         # normal print for not debugging

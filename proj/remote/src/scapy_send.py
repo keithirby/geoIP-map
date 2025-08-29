@@ -31,7 +31,10 @@ def send_packet(src_ip_with_cidr, country):
     # Send the packet to the host
     try:
         sendp(pkt, verbose=0) 
-        print(f"Sent spoofed packet from {src_ip_with_cidr} ({country}) with payload: {payload}")
+        # debug print
+        #print(f"Sent packet from {src_ip_with_cidr} ({country}) with payload: {payload}")
+        # normal print
+        print(f"Sent packet from {payload} and country ({country})")
     except Exception as e:
         print(f"Failed to send packet: {e}")
     
