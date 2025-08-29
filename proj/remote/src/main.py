@@ -66,7 +66,10 @@ def main():
 
         # Pick a random (country, geoname_id)
         country_name, geoname_id = random.choice(countries_list)
-        print(f"Random country: {country_name} (geoname_id={geoname_id})")
+        # geoname_id print for debugging
+        #print(f"Random country: {country_name} (geoname_id={geoname_id})")
+        # normal print for not debugging
+        print(f"Random country: {country_name}")
 
         # Query blocks table using text()
         block_stmt = text("SELECT network FROM blocks WHERE geoname_id = :gid")
