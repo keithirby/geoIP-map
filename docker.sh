@@ -36,6 +36,8 @@ RUN apt-get update && apt-get install -y \
     sqlite3 \
     iputils-ping \
     iproute2 \
+    libpcap0.8-dev \ 
+    tcpdump \
     && rm -rf /var/lib/apt/lists/*
 
 # Install specific Python packages

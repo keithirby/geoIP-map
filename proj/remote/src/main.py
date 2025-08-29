@@ -4,9 +4,6 @@
 start the scapy network sender 
 """
 
-
-
-
 # Standard libraries we need
 import random
 import sys
@@ -18,7 +15,7 @@ from sqlalchemy import text
 # Local libraries we need
 from db import initalize_engines, get_country_session, get_block_session
 from config import countries_list
-
+from scapy_send import send_packet
 
 
 
@@ -81,6 +78,8 @@ def main():
             # Pick a random block entry
             random_network = random.choice(block_rows)[0]
             print(f"Random network for {country_name}: {random_network}")
+            #Send the packet over the network
+            send_packet(random_network, country_name)
         # Sleep for one second before querying another countries ip block
         time.sleep(1)
 
