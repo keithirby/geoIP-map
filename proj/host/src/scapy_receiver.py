@@ -12,6 +12,8 @@ def handle_pkt(pkt):
         if pkt.haslayer(TCP) and hasattr(pkt[TCP], "payload"):
             # extract the payload and print the sender IP address and payload
             payload = bytes(pkt[TCP].payload).decode()
-            print(f"Received packet from {pkt[IP].src} with payload: {payload}")
-
+            # debug print
+            #print(f"Received packet from {pkt[IP].src} with payload: {payload}")
+            # normal print
+            print(f"Received packet from {payload}")
 sniff(filter="tcp", prn=handle_pkt)

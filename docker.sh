@@ -73,10 +73,14 @@ start_containers() {
         -v "$(pwd)/$PROJ_DIR/$SENDER_NAME:/app" \
         $IMAGE_NAME tail -f /dev/null
 
+    # Command for changing the hostnames of the terminals
+    SET_PROMPT_CMD='HOSTNAME=$(hostname); export PS1="\\[\\033[01;32m\\]\u@$HOSTNAME:\\[\\033[00m\\]\\w\\$ "'
     # Open GNOME terminal for both
-    gnome-terminal --title="$RECEIVER_NAME" -- bash -c "docker exec -it $RECEIVER_NAME /bin/bash; exec bash" &
+    gnome-terminal --title="$RECEIVER_NAME" -- bash -c "docker exec -it $RECEIVER_NAME /bin/bash -c '$SET_PROMPT_CMD; /bin/bash'" &
     sleep 1
-    gnome-terminal --title="$SENDER_NAME" -- bash -c "docker exec -it $SENDER_NAME /bin/bash; exec bash" &
+    # Open GNOME terminal for sender with a new prompt
+    gnome-terminal --title="$SENDER_NAME" -- bash -c "docker exec -it $SENDER_NAME /bin/bash -c '$SET_PROMPT_CMD; /bin/bash'" &
+
 
     echo "Two containers should be running"
     echo "   Left: $RECEIVER_NAME (receiver) | Right: $SENDER_NAME (sender)"
