@@ -24,3 +24,18 @@ docker kill host remote
 docker ps
 ```
 - then keep what ever `NAMES` have `scapy_base` under `IMAGE`
+
+- Stop the docker network
+```
+docker network rm scapy_net
+```
+
+- If you break network access again run this: 
+```
+docker build --network=host -t scapy_base -f proj/Dockerfile.scapy proj
+```
+
+- Remove all old docker build aritfacts 
+```
+docker system prune
+```

@@ -26,13 +26,23 @@ build_image() {
     echo "[*] Building Docker image: $IMAGE_NAME"
 
     # Create a base Dockerfile in proj/
-    cat > "$PROJ_DIR/Dockerfile.scapy" <<'EOF'
+cat > "$PROJ_DIR/Dockerfile.scapy" <<'EOF'
 FROM python:3.11
 
-# Install required packages
-RUN apt-get update \
-    && apt-get install -y python3-scapy sqlite3 iputils-ping iproute2 \
+# Install pip and required system packages
+# The Python base image usually includes pip, but it's good practice to ensure it's up-to-date.
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    sqlite3 \
+    iputils-ping \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install specific Python packages
+RUN pip install \
+    scapy \
+    pandas \
+    sqlalchemy
 
 WORKDIR /app
 EOF
@@ -78,7 +88,7 @@ clean_all() {
     docker network rm $NET_NAME 2>/dev/null || true
     docker rmi $IMAGE_NAME 2>/dev/null || true
 
-    echo "✅ Cleanup complete!"
+    echo "Cleanup complete!"
 }
 
 # ========================
