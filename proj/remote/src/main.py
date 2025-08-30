@@ -82,10 +82,9 @@ def main():
         # Sleep for one second before querying another countries ip block
         time.sleep(1)
 
-    # FINAL STEP: close the sessions 
-    session_countries.close()
-    session_blocks.close()
-    print("sessions closed, exiting")
+    # FINAL STEP: close the session
+    geoip_session.close()
+    print("session closed, exiting")
     sys.exit(0)
 
 if __name__ == "__main__":
