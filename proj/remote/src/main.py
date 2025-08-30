@@ -9,6 +9,7 @@ import random
 import sys
 import signal # for stop signal
 import time # for sleep
+
 # Package libraries we need 
 from sqlalchemy import text
 
@@ -69,7 +70,7 @@ def main():
         # geoname_id print for debugging
         #print(f"Random country: {country_name} (geoname_id={geoname_id})")
         # normal print for not debugging
-        print(f"Random country: {country_name}")
+        #print(f"Random country: {country_name}")
 
         # Query blocks table using text()
         block_stmt = text("SELECT network FROM blocks WHERE geoname_id = :gid")
@@ -80,7 +81,7 @@ def main():
         else:
             # Pick a random block entry
             random_network = random.choice(block_rows)[0]
-            print(f"Random network for {country_name}: {random_network}")
+            #print(f"Sending network for {country_name} : {random_network}")
             #Send the packet over the network
             send_packet(random_network, country_name)
         # Sleep for one second before querying another countries ip block
