@@ -30,29 +30,24 @@ signal.signal(signal.SIGINT, signal_handler)
 #  setup and start
 # -----------------------
 def main():
-    # 1. load the csv files into our two engines 
-    # We dont need to start the engines because they initialize on boot 
-    # in db.py 
-    initalize_engines()
-
-    # 2. Create sessions to access the database
-    session_countries = get_country_session()
-    session_blocks = get_block_session()
-    print("Sessions created")
-
-    # 3. Wait on the user to start the event loop
-    print("Databases initialized. Type 'yes' to continue...")
+    # 1. Wait on the user to start the event loop and let them choose  
+    # to load the load and cvs files into it if we havent already 
+    print("Initialized. Hit enter to start... \n Type `yes` to initalize databases")
     user_ready = False
-    while not user_ready:
-        user_input = input().strip().lower()
-        if user_input == "yes":
-            user_ready = True 
+    user_input = input().strip().lower()
+    if user_input == "yes":
+        user_ready = True
+        initalize_engines()
+
+    # 2. Create sessions to access the geoIP database database
+    geoip_session = get_geoip_session()
+    print("Sessions created")
         
-    # 4. Start the loop and wait for packets
+    # 3. Start the loop and wait for packets
     while not INTERRUPTED: 
-        start_sniffer(session_countries, session_blocks)
+        start_sniffer(geoip_session)
     
-    # 5. close the program
+    # 4. close the program
     session_countries.close()
     session_blocks.close()
     print("sessions closed, exiting")
