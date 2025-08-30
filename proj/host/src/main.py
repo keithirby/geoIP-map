@@ -11,7 +11,7 @@ import sys # for exit()
 from sqlalchemy import text
 
 # Local libraries we need
-from db import initalize_engines, get_country_session, get_block_session
+from db import initalize_engines, get_geoip_session
 from scapy_receiver import start_sniffer
 
 
@@ -47,11 +47,9 @@ def main():
     while not INTERRUPTED: 
         start_sniffer(geoip_session)
     
-    # 4. close the program
-    session_countries.close()
-    session_blocks.close()
-    print("sessions closed, exiting")
-    sys.exit(0)
+    # FINAL STEP: close the session
+    geoip_session.close()
+    print("session closed, exiting")
 
 if __name__ == "__main__":
     main()
