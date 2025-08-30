@@ -34,7 +34,8 @@ def send_packet(src_ip_with_cidr, country):
         # debug print
         #print(f"Sent packet from {src_ip_with_cidr} ({country}) with payload: {payload}")
         # normal print
-        print(f"Sent packet from {payload} and country ({country})")
+        print(f"Sent packet from country ({country}) and `{src_ip}/{cidr_mask}`")
+        
     except Exception as e:
         print(f"Failed to send packet: {e}")
     
