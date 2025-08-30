@@ -54,7 +54,7 @@ def main():
     country_records = geoip_session.execute(stmt).fetchall()
     country_list = [(row[0], row[1]) for row in country_records]
         
-    # 4. Start the loop and print countries and their major IP block address 
+    # 3. Start the loop and print countries and their major IP block address 
     # pulled from the database
     while not INTERRUPTED:
         # OPTION 1: totally random country + IP address
