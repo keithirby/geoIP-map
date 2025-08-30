@@ -1,10 +1,23 @@
 # README file for the Geo IP map project
 
 
-### Versions
+### Releases 
+
+#### Release 1.1 Matching 
+
+- A bash script is used to build and start two docker containers: 
+1. remote: The container sending packets 
+2. host: The container receiving packets
+
+- sender (remote container) can read from the SQL lite databases of random countries and their Major IP blocks, append the CIDR mask as a payload, and sent to the receiver (host container).  
+
+- receiver (host container) can read the IP packet, decode the payload, and **match** the payloads passed IP address + cidr mask to a country from its own databases.
+
+- Both devices can send and recognize IP packets "sent" from the same country
 
 
-#### Release 1.0 Basic 
+
+#### Release 1.0 Basic
 - A bash script is used to build and start two docker containers: 
 1. remote: The container sending packets 
 2. host: The container receiving packets
