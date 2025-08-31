@@ -25,6 +25,8 @@ GEOIP_ENGINE = create_engine(f"sqlite:///{GEO_IP_DB_PATH}", echo=False)
 SESS_GEOIP_FACTORY = sessionmaker(bind=GEOIP_ENGINE)
 # Another session for updating table frequency table
 PACKET_SESSION_FACTORY = sessionmaker(bind=GEOIP_ENGINE)
+# Lock to be extra careful with threading for the packet table
+PACKET_LOCK = Lock()
 
 # Common database statements (commands)
 #-- Used by decrement_packet_frequencies()--#
@@ -53,8 +55,7 @@ PACKET_SEARCH_ID_STMT = text(
     "SELECT geoname_id, frequency, request_time FROM packet WHERE geoname_id = :gid"
 )
 
-# Lock to be extra careful with threading
-PACKET_LOCK = Lock()
+
 
 """!
 @brief Load a passed csv_file into a engine
