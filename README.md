@@ -16,7 +16,7 @@
 
 **Code Flow Diagram**
 
-![Sender Diagram](images/v1.2/sender_remote.light.png)
+![Sender Diagram](images/v1-2/sender-remote-light.png)
 
 ###### Receiver / Host
 - receiver (host container) can read the IP packet, decode the payload, and **match** the payloads passed IP address + cidr mask to a country from its own database (geoIP).
@@ -28,7 +28,7 @@
 
 **Code Flow Diagram**
 
-![Receiver Diagram](images/v1.2/receiver_host.light.png)
+![Receiver Diagram](images/v1-2/receiver-host-light.png)
 
 ***NOTE***: config.py is not published because it holds information I cannot publish online.
 
