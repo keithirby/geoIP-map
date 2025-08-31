@@ -5,13 +5,13 @@
 
 # Package libraries we need
 from scapy.all import sniff, IP, TCP
-
-# Package libraries we need 
+ 
 from sqlalchemy import text
 
 
 
-def match_country_to_address(payload, geoip_session):
+
+def match_country_to_address(payload, geoip_session, increment_packet_freq):
     if payload == None:
             print("Packet did not have a recognized payload")
             return 
@@ -31,11 +31,13 @@ def match_country_to_address(payload, geoip_session):
         raise ValueError(f"No country found for geoname_id {geoname_id}")
         return
     country_name = country_result[0]
-    print(f"Received packet from from ({country_name}) and `{payload}` ")
+    # Add the countries packet to our packet table
+    increment_packet_freq(geoname_id)
+    print(f"Received packet from ({country_name}) and `{payload}` ")
     
 
 
-def handle_pkt(pkt, geoip_session):
+def handle_pkt(pkt, geoip_session, increment_packet_freq):
     # Check if the sent packet has a IP and TCP layer
     if IP in pkt and TCP in pkt:
         # If it does then make sure there is a payload attached
@@ -48,15 +50,15 @@ def handle_pkt(pkt, geoip_session):
                 return  
             # debug print
             #print(f"Received packet from SRC IP {pkt[IP].src} | payload {payload}")
-            match_country_to_address(payload, geoip_session)
+            match_country_to_address(payload, geoip_session, increment_packet_freq)
 
-def start_sniffer(geoip_session):
+def start_sniffer(geoip_session, increment_packet_freq):
     """
     Starts sniffing and passes session objects to handle_pkt().
     """
     sniff(
         filter="tcp",
-        prn=lambda pkt: handle_pkt(pkt, geoip_session)
+        prn=lambda pkt: handle_pkt(pkt, geoip_session, increment_packet_freq)
     )
 
 
