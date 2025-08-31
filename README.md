@@ -30,7 +30,7 @@
 
 ![Receiver Diagram](images/v1-2/receiver-host-light.png)
 
-***NOTE***: config.py is not published because it holds information I cannot publish online.
+***NOTE***: `config.py` is not published because it holds information I cannot publish online.
 
 ### Release 1.1 Matching 
 
@@ -44,7 +44,7 @@
 
 - Both devices can send and recognize IP packets "sent" from the same country
 
-***NOTE***: config.py is not published because it holds information I cannot publish online.
+***NOTE***: `config.py` is not published because it holds information I cannot publish online.
 
 
 
@@ -57,7 +57,7 @@
 
 - receiver (host container) can read the IP packet, decode the payload, and print the network address + CIDR mask in the payload. 
 
-***NOTE***: config.py is not published because it holds information I cannot publish online.
+***NOTE***: `config.py` is not published because it holds information I cannot publish online.
 
 
 ## Common docker commands
