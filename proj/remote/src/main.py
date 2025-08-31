@@ -9,13 +9,14 @@ import random
 import sys
 import signal # for stop signal
 import time # for sleep
+import threading
 
 # Package libraries we need 
 from sqlalchemy import text
 
 # Local libraries we need
-from db import initalize_engines, get_geoip_session
-from config import countries_list_selected
+from db import initalize_engines, get_geoip_session, increment_packet_freq, decrement_packet_frequencies
+from config import countries_list_selected, DECREMENT_INTERVAL
 from scapy_send import send_packet
 
 
@@ -29,6 +30,12 @@ def signal_handler(sig, frame):
 
 # Register the signal handler for ctrl + c 
 signal.signal(signal.SIGINT, signal_handler)
+
+# Function to decrement all packets sent frequency by 1 every interval_sec
+def periodic_decrement(interval_sec=5):
+    while not INTERRUPTED:
+        decrement_packet_frequencies()
+        time.sleep(interval_sec)
 
 
 # -----------------------
@@ -49,34 +56,42 @@ def main():
     geoip_session = get_geoip_session()
     print("Sessions created")
 
-    # Make a list of all possible countries from countries table    
+    # 3. Make a list of all possible countries from countries table    
     stmt = text("SELECT country_name, geoname_id FROM countries")
     country_records = geoip_session.execute(stmt).fetchall()
     country_list = [(row[0], row[1]) for row in country_records]
         
-    # 3. Start the loop and print countries and their major IP block address 
+    # 4. start the background thread to update the packet table
+    decrement_thread = threading.Thread(target=periodic_decrement, daemon=True)
+    decrement_thread.start()
+    print(f"Started background decrement thread (every {DECREMENT_INTERVAL}s)")
+
+
+    # 5. Start the loop and print countries and their major IP block address 
     # pulled from the database
     while not INTERRUPTED:
         # OPTION 1: totally random country + IP address
         # Get country_name : geoname_id pairs
-        country_name, geoname_id = random.choice(country_list)
+        #country_name, geoname_id = random.choice(country_list)
         #-------------------------------------------------------
         # OPTION 2: Random ish country from pre-defined list in config.py
-        #country_name, geoname_id = random.choice(countries_list_selected)
+        country_name, geoname_id = random.choice(countries_list_selected)
         #--------------------------------------------------------
         # geoname_id print for debugging
         #print(f"Random country: {country_name} (geoname_id={geoname_id})")
 
         # Query blocks table for all Major IP blocks for a country
         block_stmt = text("SELECT network FROM blocks WHERE geoname_id = :gid")
-        block_rows = geoip_session.execute(block_stmt, {"gid": geoname_id}).fetchall()
+        block_records = geoip_session.execute(block_stmt, {"gid": geoname_id}).fetchall()
 
-        if not block_rows:
+        if not block_records:
             print("No matching block entries found.")
         else:
             # Pick a random Major IP Block for a country
-            random_network = random.choice(block_rows)[0]
+            random_network = random.choice(block_records)[0]
             #print(f"Sending network for {country_name} : {random_network}")
+            # Add the packet to packet table records 
+            increment_packet_freq(geoname_id)
             #Send the packet over the network
             send_packet(random_network, country_name)
         # Sleep for one second before querying another countries ip block
