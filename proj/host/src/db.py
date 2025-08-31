@@ -217,6 +217,3 @@ def increment_packet_freq(geoname_id):
             # Close the session
             print("finished incrementing packet frequency")
             session.close()
-
-
-geoname_id=6254930
