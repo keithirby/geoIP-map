@@ -83,55 +83,11 @@ def transform_to_canvas(point, canvas_w, canvas_h, padding=50):
 dpg.create_context()
 
 # Initial sizes
-control_panel_width = 250
+initial_viewport_width = 1200
+initial_viewport_height = 800
+control_panel_width_ratio = 0.25  # 25% of viewport width for controls
 
-# Create viewport first
-dpg.create_viewport(title="Live Country Map", width=1200, height=800)
-dpg.setup_dearpygui()
-
-# Map drawlist placeholder
-map_width, map_height = 900, 600
-
-with dpg.window(label="Live Country Map", width=map_width+control_panel_width+20, height=map_height+50):
-    with dpg.group(horizontal=True):
-        # Map drawlist
-        with dpg.drawlist(width=map_width, height=map_height) as map_drawlist:
-            country_items = {}
-            for country_name, polys in country_polygons.items():
-                for poly in polys:
-                    transformed_points = [transform_to_canvas(pt, map_width, map_height) for pt in poly]
-                    item = dpg.draw_polygon(
-                        points=transformed_points,
-                        color=(255, 255, 255, 255),
-                        fill=(200, 200, 200, 255),
-                        thickness=1.0,
-                        parent=map_drawlist
-                    )
-                    country_items.setdefault(country_name, []).append(item)
-
-        # Control panel
-        with dpg.group(horizontal=False, width=control_panel_width):
-            dpg.add_text("Controls")
-            # Filter input
-            def filter_callback(sender, app_data, user_data):
-                search_text = dpg.get_value(sender).lower()
-                for country, items in country_items.items():
-                    visible = search_text in country.lower()
-                    for item in items:
-                        dpg.configure_item(item, show=visible)
-            dpg.add_input_text(label="Filter countries", callback=filter_callback, width=control_panel_width)
-            
-            # Color intensity slider
-            color_settings = {"multiplier": 1.0}
-            def color_multiplier_callback(sender, app_data, user_data):
-                color_settings["multiplier"] = app_data
-            dpg.add_slider_float(label="Color intensity", min_value=0.1, max_value=3.0,
-                                 default_value=1.0, callback=color_multiplier_callback)
-
-# Show viewport
-dpg.show_viewport()
-
-# Function to transform polygons based on current drawlist size
+# Dynamic transform function
 def transform_to_canvas_dynamic(point, drawlist_w, drawlist_h, padding=50):
     all_x = np.concatenate([np.array([pt[0] for pt in poly])
                             for polys in country_polygons.values() for poly in polys])
@@ -150,20 +106,90 @@ def transform_to_canvas_dynamic(point, drawlist_w, drawlist_h, padding=50):
     y_new = (y_max - y) * scale + padding  # flip y-axis
     return (x_new, y_new)
 
-# Resize handler
-def resize_callback(sender, app_data):
-    viewport_w = dpg.get_viewport_width() - control_panel_width - 20
-    viewport_h = dpg.get_viewport_height() - 20
-    dpg.configure_item(map_drawlist, width=viewport_w, height=viewport_h)
+# Create viewport
+dpg.create_viewport(title="Live Country Map", width=initial_viewport_width, height=initial_viewport_height)
+dpg.setup_dearpygui()
 
-    # Recompute transformed points for each polygon
+with dpg.window(label="Live Country Map", width=initial_viewport_width, height=initial_viewport_height):
+    with dpg.group(horizontal=True):
+        # Map drawlist
+        with dpg.drawlist(width=int(initial_viewport_width*(1-control_panel_width_ratio)), 
+                          height=initial_viewport_height) as map_drawlist:
+            country_items = {}
+            for country_name, polys in country_polygons.items():
+                for poly in polys:
+                    transformed_points = [transform_to_canvas_dynamic(pt,
+                                                int(initial_viewport_width*(1-control_panel_width_ratio)),
+                                                initial_viewport_height) for pt in poly]
+                    item = dpg.draw_polygon(
+                        points=transformed_points,
+                        color=(255, 255, 255, 255),
+                        fill=(200, 200, 200, 255),
+                        thickness=1.0,
+                        parent=map_drawlist
+                    )
+                    country_items.setdefault(country_name, []).append(item)
+
+        # Control panel
+        with dpg.child_window(width=int(initial_viewport_width*control_panel_width_ratio),
+                      height=initial_viewport_height,
+                      border=True) as control_panel:
+            dpg.add_text("Controls")
+
+            # Filter input
+            def filter_callback(sender, app_data, user_data):
+                search_text = dpg.get_value(sender).lower()
+                for country, items in country_items.items():
+                    visible = search_text in country.lower()
+                    for item in items:
+                        dpg.configure_item(item, show=visible)
+
+            dpg.add_input_text(
+                label="Filter countries",
+                callback=filter_callback,
+                width=int(initial_viewport_width*control_panel_width_ratio) - 20  # small padding
+            )
+
+            # Color intensity slider
+            color_settings = {"multiplier": 1.0}
+            def color_multiplier_callback(sender, app_data, user_data):
+                color_settings["multiplier"] = app_data
+
+            dpg.add_slider_float(
+                label="Color intensity",
+                min_value=0.1,
+                max_value=3.0,
+                default_value=1.0,
+                callback=color_multiplier_callback,
+                width=int(initial_viewport_width*control_panel_width_ratio) - 20  # match input width
+            )
+
+# Show viewport
+dpg.show_viewport()
+
+
+
+# Viewport resize handler
+def resize_callback(sender, app_data):
+    viewport_w = dpg.get_viewport_width()
+    viewport_h = dpg.get_viewport_height()
+
+    # Adjust map and control panel widths and heights
+    map_w = int(viewport_w * (1 - control_panel_width_ratio))
+    map_h = viewport_h
+    control_w = viewport_w - map_w
+    control_h = viewport_h
+
+    dpg.configure_item(map_drawlist, width=map_w, height=map_h)
+    dpg.configure_item(control_panel, width=control_w, height=control_h)
+
+    # Update all polygon points
     for country, items in country_items.items():
         polys = country_polygons[country]
         for poly, item in zip(polys, items):
-            transformed_points = [transform_to_canvas_dynamic(pt, viewport_w, viewport_h) for pt in poly]
+            transformed_points = [transform_to_canvas_dynamic(pt, map_w, map_h) for pt in poly]
             dpg.configure_item(item, points=transformed_points)
 
-# Bind the handler
 dpg.set_viewport_resize_callback(resize_callback)
 
 dpg.start_dearpygui()
