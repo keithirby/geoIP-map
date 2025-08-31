@@ -9,8 +9,18 @@ import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
-from config import NATURALEARTH_LOWRES_PATH
+from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST
 from db import initalize_engines, get_geoip_session
+
+
+# Load stuff from the databases we need
+from sqlalchemy import text
+geoip_session = get_geoip_session()
+QUERY_COUNTRIES_RECORD_STMT = text(
+    "SELECT country_name, geoname_id FROM countries"
+)
+country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
+country_list = [(row[0], row[1]) for row in country_records]
 
 # =============================
 # 1) Load and preprocess country shapes
@@ -20,6 +30,40 @@ world = gpd.read_file(NATURALEARTH_LOWRES_PATH)
 print(world.head())
 print(world.columns.tolist())
 
+
+# Convert to dictionary for easy lookup
+country_fix_dict = dict(COUNTRY_FIX_LIST)
+
+print("Fixing country names from country_fix_list...")
+for idx, row in world.iterrows():
+    country_name = row["ADMIN"]
+    if country_name in country_fix_dict:
+        fixed_name = country_fix_dict[country_name]
+        world.at[idx, "ADMIN"] = fixed_name
+        print(f"Fixed: {country_name} -> {fixed_name}")
+print("Checking for matches between countries table and world map supported country polygons...")
+for _, row in world.iterrows():
+    country_name = row["ADMIN"]
+    
+    if country_name is None:
+        print("ERROR: None value in world map")
+        continue
+
+    country_name_lower = country_name.lower()
+
+    # Check for a match in country_list safely
+    matched = False
+    for listed_country, _ in country_list:
+        if listed_country is None:  # skip None entries
+            continue
+        if country_name_lower == listed_country.lower():
+            matched = True
+            break
+
+    if matched:
+        print(f"Matched! {country_name}")
+    else:
+        print(f"ERROR: {country_name}")
 
 
 # Simplify polygons to reduce vertex count (important for performance!)
@@ -31,6 +75,7 @@ print("Building country polygons from 'ADMIN' column (with simplification)...")
 for _, row in world.iterrows():
     name = row["ADMIN"]
     geom = row["geometry"]
+
 
     # Simplify geometry for performance (tolerance controls smoothness)
     geom = geom.simplify(0.05, preserve_topology=True)
@@ -137,18 +182,19 @@ with dpg.window(label="Live Country Map", width=initial_viewport_width, height=i
             dpg.add_text("Controls")
 
             # Filter input
-            def filter_callback(sender, app_data, user_data):
-                search_text = dpg.get_value(sender).lower()
-                for country, items in country_items.items():
-                    visible = search_text in country.lower()
-                    for item in items:
-                        dpg.configure_item(item, show=visible)
-
-            dpg.add_input_text(
-                label="Filter countries",
-                callback=filter_callback,
-                width=int(initial_viewport_width*control_panel_width_ratio) - 20  # small padding
-            )
+            # Commented out so I can work on trying to get 1 button working correctly
+            #def filter_callback(sender, app_data, user_data):
+            #    search_text = dpg.get_value(sender).lower()
+            #    for country, items in country_items.items():
+            #        visible = search_text in country.lower()
+            #        for item in items:
+            #            dpg.configure_item(item, show=visible)
+            #
+            #dpg.add_input_text(
+            #    label="Filter countries",
+            #    callback=filter_callback,
+            #    width=int(initial_viewport_width*control_panel_width_ratio) - 20  # small padding
+            #)
 
             # Color intensity slider
             color_settings = {"multiplier": 1.0}
@@ -211,17 +257,11 @@ def live_update_loop():
 
             for item in items:
                 dpg.configure_item(item, fill=color)
-
+        print("updating map data")
         time.sleep(0.5)  # sub-second updates (tune as needed)
 
 # Start the background thread
 threading.Thread(target=live_update_loop, daemon=True).start()
 
 
-#initalize_engines()
-#geoip_session = get_geoip_session()
-#country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
-#QUERY_COUNTRIES_RECORD_STMT = text(
-#    "SELECT country_name FROM countries"
-#)
-#country_list = [(row[0], row[1]) for row in country_records]
+
