@@ -3,8 +3,6 @@
 @brief load our cvs files as sqllite engines / databases 
 and provide factories to start sessions for our sqllite engines
 """
-# Per the user agreement I signed I cannot upload the databases I used to the internet
-from config import COUNTRY_CVS, BLOCKS_CVS, GEO_IP_DB_PATH, FREQ_MIN 
 
 #Standards libraries needed 
 import time
@@ -14,6 +12,10 @@ from threading import Lock
 import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, Float, String, Boolean, MetaData, Table, text 
 from sqlalchemy.orm import sessionmaker
+
+# Local Libraries we need
+# Per the user agreement I signed I cannot upload the databases I used to the internet
+from config import COUNTRY_CVS, BLOCKS_CVS, GEO_IP_DB_PATH, FREQ_MIN 
 # -----------------------
 # Database setup
 # -----------------------
