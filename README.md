@@ -1,16 +1,16 @@
 # README file for the Geo IP map project
 
 
-### Releases 
+## Releases 
 
-#### Release 1.2 Sliding-window 
+### Release 1.2 Sliding-window 
 
 - A bash script is used to build and start two docker containers: 
 1. remote: The container sending packets 
 2. host: The container receiving packets
 
 
-###### Sender / Remote
+#### Sender / Remote
 - sender (remote container) can read from the SQL lite database (geoIP.db) of random countries and their Major IP blocks, append the CIDR mask as a payload, and sent to the receiver (host container). 
 - sender will also append all packets they try to send to the reciever to a new packet table. This table keeps track of two things: the geoname_id and # of packets sent over. The # of packets (column Frequency in packet table) is also decremented by another thread every `FREQ_MIN` seconds found in my `config.py` file. 
 
@@ -18,7 +18,7 @@
 
 ![Sender Diagram](images/v1-2/sender-remote-light.png)
 
-###### Receiver / Host
+#### Receiver / Host
 - receiver (host container) can read the IP packet, decode the payload, and **match** the payloads passed IP address + cidr mask to a country from its own database (geoIP).
 - receiver also appends all packets recieved to a new table called packet table. This table keeps track of the of two things: the geoname_id and the # of packets recieved. The # of packets (column frequency in the packet table) is also decremnted by anotehr thread every `FREQ_MIN` seconds defined in my `config.py` file. 
 
@@ -32,7 +32,7 @@
 
 ***NOTE***: config.py is not published because it holds information I cannot publish online.
 
-#### Release 1.1 Matching 
+### Release 1.1 Matching 
 
 - A bash script is used to build and start two docker containers: 
 1. remote: The container sending packets 
@@ -48,7 +48,7 @@
 
 
 
-#### Release 1.0 Basic
+### Release 1.0 Basic
 - A bash script is used to build and start two docker containers: 
 1. remote: The container sending packets 
 2. host: The container receiving packets
@@ -60,7 +60,7 @@
 ***NOTE***: config.py is not published because it holds information I cannot publish online.
 
 
-### Common docker commands
+## Common docker commands
 - Run these in the same directory as `docker.sh`
 
 - Build the containers image
