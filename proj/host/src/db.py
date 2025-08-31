@@ -4,7 +4,7 @@
 and provide factories to start sessions for our sqllite engines
 """
 # Per the user agreement I signed I cannot upload the databases I used to the internet
-from config import COUNTRY_CVS, BLOCKS_CVS, GEO_IP_DB_PATH
+from config import COUNTRY_CVS, BLOCKS_CVS, GEO_IP_DB_PATH, FREQ_MIN 
 
 #Standards libraries needed 
 import time
@@ -80,6 +80,8 @@ def load_packet_table_sqlite():
         Column("frequency", Integer, default=0),
         Column("request_time", Float)
     )
+    # Clear the table if it already exists: 
+    metadata.drop_all(GEOIP_ENGINE, tables=[packet_table])
     # Create the table in database
     metadata.create_all(GEOIP_ENGINE)
     print(f"Packet table '{table_name}' initialized.")
@@ -118,8 +120,11 @@ def decrement_packet_frequencies():
         # 4. Go through the list of packet records and decrement by 1
         for geoname_id, freq in packet_records:
             try:
-                # If the frequency isnt already one decrement the frequency by 1
-                new_freq = max(freq - 1, 0)
+                # If the frequency isnt already FREQ_MIN (typically 1) 
+                # decrement the frequency by 1
+                # Why do I do this? I want to know if a country has at least 
+                # sent one packet over the network
+                new_freq = max(freq - 1, FREQ_MIN)
                 # Stage the change
                 session.execute(
                     PACKET_SUB_FREQU_STMT,
@@ -133,10 +138,12 @@ def decrement_packet_frequencies():
                 updated_row = session.execute(PACKET_SEARCH_ID_STMT, {"gid": geoname_id}).fetchone()
                 if updated_row:
                     gid, freq_after, req_time_after = updated_row
-                    if freq_after != new_freq:
-                        print(f"   ✅ Updated row: geoname_id={gid}, freq={freq_after} vs old {new_freq}, request_time={req_time_after}")
-                    else: 
-                        print("Frequency wasnt updated when incrementing a packet")
+                    if freq_after != freq:
+                        print(f"[Decremented] record: geoname_id={gid}, freq: new:{freq_after} old:{freq}")
+                    #else: 
+                        #--DEBUG--# 
+                        # This is used to keep track of countries with only 1 hit
+                        #print(f"Frequency wasnt updated when incrementing a packet for geoname_id={gid}")
                 else: 
                     print("Cant find a packet record after incrementing?")
 
@@ -160,40 +167,53 @@ def increment_packet_freq(geoname_id):
             curr_time = time.time()
             result = session.execute(PACKET_ADD_SEARCH_FREQ_STMT, {"gid": geoname_id}).fetchone()
 
-            freq = 1
             if result is None:
                 # 2. If a record wasnt found, create one, stage the change
+                old_freq = 0
+                new_freq = 1
                 session.execute(
                     PACKET_ADD_STMT,
-                    {"geoname_id": geoname_id, "frequency": freq, "request_time": curr_time},
+                    {"geoname_id": geoname_id, "frequency": new_freq, "request_time": curr_time},
                 )
+                action = "Inserted"
+                print(f"---added new for gid{geoname_id}")
             else:
                 # 2. if a record was found, update it, stage the change 
-                freq, _ = result
+                old_freq, _ = result
+                new_freq = old_freq + 1
                 session.execute(
                     PACKET_UPDATE_STMT,
-                    {"frequency": freq + 1, "request_time": curr_time, "gid": geoname_id},
+                    {"frequency": new_freq, "request_time": curr_time, "gid": geoname_id},
                 )
+                action = "Updated"
+                print(f"---updated for gid: {geoname_id}")
+
             # Push the changes
             session.commit()
             print("commited incrementing packet frequency")
             #---DEBUG---#
             # Fetch and print the updated record 
+            # Fetch updated record for debug
             updated_row = session.execute(PACKET_SEARCH_ID_STMT, {"gid": geoname_id}).fetchone()
             if updated_row:
-                gid, freq_after, req_time_after = updated_row
-                if freq_after != freq:
-                    print(f"   ✅ Updated row: geoname_id={gid}, freq={freq_after} vs old {freq}, request_time={req_time_after}")
-                else: 
-                    print("Frequency wasnt updated when incrementing a packet")
-            else: 
-                print("Cant find a packet record after incrementing?")
+                updated_gid, freq_after, req_time_after = updated_row
+                print(
+                    f"[{action}] row: geoname_id={updated_gid} | old_freq={old_freq} → new_freq={freq_after} | request_time={req_time_after}"
+                )
+            else:
+                print(f"[{action}] ERROR: Cannot find packet record after operation for geoname_id={geoname_id}")
+
+
 
         except Exception as e:
             # If the changes werent accepted roll back what might have happened
-            print("failed update or add a packet record")
+            #---DEBUG---#
+            print(f"failed update or add a packet record for geoname_id={geoname_id}: {e}")
             session.rollback()
         finally:
             # Close the session
             print("finished incrementing packet frequency")
             session.close()
+
+
+geoname_id=6254930
