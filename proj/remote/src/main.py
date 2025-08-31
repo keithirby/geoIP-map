@@ -20,6 +20,14 @@ from config import countries_list_selected, DECREMENT_INTERVAL
 from scapy_send import send_packet
 
 
+# Common database statements (commands)
+QUERY_COUNTRIES_RECORD_STMT = text(
+    "SELECT country_name, geoname_id FROM countries"
+)
+QUERY_BLOCKS_RECORD_STMT = text(
+    "SELECT network FROM blocks WHERE geoname_id = :gid"
+)
+
 
 # Function that ctrl + c will make the program enter 
 INTERRUPTED = False
@@ -57,8 +65,7 @@ def main():
     print("Sessions created")
 
     # 3. Make a list of all possible countries from countries table    
-    stmt = text("SELECT country_name, geoname_id FROM countries")
-    country_records = geoip_session.execute(stmt).fetchall()
+    country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
     country_list = [(row[0], row[1]) for row in country_records]
         
     # 4. start the background thread to update the packet table
@@ -81,8 +88,7 @@ def main():
         #print(f"Random country: {country_name} (geoname_id={geoname_id})")
 
         # Query blocks table for all Major IP blocks for a country
-        block_stmt = text("SELECT network FROM blocks WHERE geoname_id = :gid")
-        block_records = geoip_session.execute(block_stmt, {"gid": geoname_id}).fetchall()
+        block_records = geoip_session.execute(QUERY_BLOCKS_RECORD_STMT, {"gid": geoname_id}).fetchall()
 
         if not block_records:
             print("No matching block entries found.")
