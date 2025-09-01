@@ -147,9 +147,10 @@ In other words slowly update the guy elements like the map if we change the size
 """
 def create_map_window(country_polygons, initial_viewport_width=1920, initial_viewport_height=1080, control_panel_height_ratio=0.25):
     dpg.create_context()
-
     # Create viewport
-    dpg.create_viewport(title="Live Country Map", width=initial_viewport_width, height=initial_viewport_height)
+    dpg.create_viewport(title="Packet Map", width=initial_viewport_width, height=initial_viewport_height)
+    # Use this to change the guis colors
+    dpg.set_viewport_clear_color((255, 255, 255, 255))  # White GUI
     dpg.setup_dearpygui()
 
     with dpg.window(label="Live Country Map", width=initial_viewport_width, height=initial_viewport_height):
@@ -159,33 +160,59 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
             map_h = int(initial_viewport_height * (1 - control_panel_height_ratio))
             map_w = initial_viewport_width
             with dpg.drawlist(width=map_w, height=map_h) as map_drawlist:
+                # Draw a ocean rectangle backgroudn onto the GUI 
+                # --- Draw ocean background first ---
+                dpg.draw_rectangle(
+                    pmin=(0, 0),
+                    pmax=(map_w, map_h),
+                    color=(0, 0, 0, 0),             # no border
+                    fill=(173, 216, 230, 255)       # light blue fill for ocean
+                )
+                # Draw all the countries onto the GUI 
                 country_items = {}
                 for country_name, polys in country_polygons.items():
                     for poly in polys:
                         transformed_points = [
                             transform_to_canvas_dynamic(pt, country_polygons, map_w, map_h) for pt in poly
                         ]
+                        # Use this to change the map polygons
                         item = dpg.draw_polygon(
                             points=transformed_points,
-                            color=(255, 255, 255, 255),
-                            fill=(200, 200, 200, 255),
-                            thickness=1.0,
+                            color=(0, 0, 0, 255),              # black outlines
+                            fill=(200, 200, 200, 255),        # light gray fill
+                            thickness=1.5,                    # slightly thicker borders
                             parent=map_drawlist
                         )
                         country_items.setdefault(country_name, []).append(item)
 
             # Control panel in a tab bar below the map now
             control_h = initial_viewport_height - map_h
+            # Color theme for the control panel
+            # Color theme for the control panel
+            with dpg.theme() as control_panel_theme:
+                with dpg.theme_component(dpg.mvAll):
+                    dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (80, 80, 80, 255))     # matte grey background
+                    dpg.add_theme_color(dpg.mvThemeCol_ChildBg, (80, 80, 80, 255))      # child windows same grey
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, (255, 255, 255, 255))      # white text
+                    dpg.add_theme_color(dpg.mvThemeCol_FrameBg, (100, 100, 100, 255))   # input/slider backgrounds
+                    dpg.add_theme_color(dpg.mvThemeCol_FrameBgHovered, (120, 120, 120, 255))
+                    dpg.add_theme_color(dpg.mvThemeCol_FrameBgActive, (140, 140, 140, 255))
+            
             with dpg.tab_bar():
                 with dpg.tab(label="Control Panel"):
                     with dpg.group(horizontal=False) as control_panel:
-                        dpg.add_text("Controls")
+                        # Bind the matte grey theme to the control panel
+                        dpg.bind_item_theme(control_panel, control_panel_theme)
+            
+                        # Title text will now follow the theme (white)
+                        dpg.add_text("Controls")  
+            
                         color_settings = {"multiplier": 1.0}
-
+            
                         # Example slider
                         def color_multiplier_callback(sender, app_data, user_data):
                             color_settings["multiplier"] = app_data
-
+            
                         dpg.add_slider_float(
                             label="Color intensity",
                             min_value=0.1,
@@ -193,7 +220,7 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
                             default_value=1.0,
                             callback=color_multiplier_callback
                         )
-
+            
     return map_drawlist, control_panel, country_items
 
 
