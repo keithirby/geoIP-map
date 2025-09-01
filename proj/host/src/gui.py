@@ -14,7 +14,7 @@ import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
-from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT
+from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT, QUERY_TUPLE_RECORD_STMT, PACKET_SUB_SEARCH_FREQ_STMT
 from db import initalize_engines, get_geoip_session
 
 
@@ -223,22 +223,51 @@ def run_gui():
 # =============================
 # ------ Geopanda map updater--
 # =============================
-def live_update_loop(country_items, color_multiplier=1.0):
+# Function to fetch frequency for a given country name
+def get_country_frequency(country_name):
+    with get_geoip_session() as conn:
+        # 1) Fetch the country's ID
+        country_result = conn.execute(QUERY_TUPLE_RECORD_STMT, {"country_name": country_name}).fetchone()
+        
+        if not country_result:
+            print(f"ERROR: Country '{country_name}' not found in countries table.")
+            return None
+        
+        geoname_id = country_result[0]
+        print(f"Found country '{country_name}' with ID {geoname_id}.")
+
+        # 2) Fetch the frequency from packets table
+        packet_result = conn.execute(PACKET_SUB_SEARCH_FREQ_STMT, {"geoname_id": geoname_id}).fetchone()
+        
+        if not packet_result:
+            print(f"No packet record found for country ID {geoname_id}.")
+            return None
+        
+        frequency = packet_result[0]
+        print(f"Frequency for country '{country_name}' is {frequency}.")
+        return frequency
+
+def live_update_loop(country_items, color_multiplier=1.0, freq_max=1.0):
     while dpg.is_dearpygui_running():
         for country, items in country_items.items():
-            # Simulate frequency as a random number
-            freq = random.random()
+            freq = get_country_frequency(country)
 
-            # Map frequency -> color (red for high freq, green for low freq)
-            r = min(int(255 * freq * color_multiplier), 255)
-            g = min(int(255 * (1 - freq) * color_multiplier), 255)
-            color = (r, g, 100, 255)
+            if freq is None:
+                continue
 
-            # Update each polygon
+            # Normalize to 0–1
+            norm_freq = min(freq / freq_max, 1.0)
+
+            # Wide gradient: green -> yellow -> red
+            r = int(255 * norm_freq * color_multiplier)
+            g = int(255 * (1 - norm_freq) * color_multiplier)
+            b = 0  # keep pure warm/cool tones for a clear gradient
+            color = (r, g, b, 255)
+
             for item in items:
                 dpg.configure_item(item, fill=color)
 
-        time.sleep(0.5)  # sub-second updates
+        time.sleep(0.5)
     
 
 
@@ -254,6 +283,9 @@ def main():
     # 3) Setup viewport resize handler
     setup_resize_handler(map_drawlist, control_panel, country_items, country_polygons)
     print("resize setup")
+    # Setup the map updater
+    threading.Thread(target=live_update_loop, args=(country_items,), daemon=True).start()
+    print("threading started")
     # 4) Run the GUI
     run_gui()
 
