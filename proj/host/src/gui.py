@@ -6,6 +6,8 @@ import threading
 import time
 import random
 import numpy as np
+import colorsys
+
 
 
 # Package libraries we need
@@ -100,7 +102,7 @@ def setup_country_polygons():
         if isinstance(geom, Polygon):
             polygons = [geom]
         elif isinstance(geom, MultiPolygon):
-            polygons = list(geom.geoms)  # ✅ FIX: use .geoms instead of list(geom)
+            polygons = list(geom.geoms)
         else:
             continue  # skip weird geometry types
 
@@ -143,7 +145,7 @@ def transform_to_canvas_dynamic(point, polys, drawlist_w, drawlist_h, padding=50
 @brief Dynamically transform a geographic point to the drawlist coordinates.
 In other words slowly update the guy elements like the map if we change the size of the window
 """
-def create_map_window(country_polygons, initial_viewport_width=1200, initial_viewport_height=800, control_panel_width_ratio=0.25):
+def create_map_window(country_polygons, initial_viewport_width=1920, initial_viewport_height=1080, control_panel_height_ratio=0.25):
     dpg.create_context()
 
     # Create viewport
@@ -151,15 +153,18 @@ def create_map_window(country_polygons, initial_viewport_width=1200, initial_vie
     dpg.setup_dearpygui()
 
     with dpg.window(label="Live Country Map", width=initial_viewport_width, height=initial_viewport_height):
-        with dpg.group(horizontal=True):
-            # Map drawlist
-            map_w = int(initial_viewport_width * (1 - control_panel_width_ratio))
-            map_h = initial_viewport_height
+        # Vertical layout: map on top, controls below
+        with dpg.group(horizontal=False):
+            # Map drawlist (take most of the window height)
+            map_h = int(initial_viewport_height * (1 - control_panel_height_ratio))
+            map_w = initial_viewport_width
             with dpg.drawlist(width=map_w, height=map_h) as map_drawlist:
                 country_items = {}
                 for country_name, polys in country_polygons.items():
                     for poly in polys:
-                        transformed_points = [transform_to_canvas_dynamic(pt, country_polygons, map_w, map_h) for pt in poly]
+                        transformed_points = [
+                            transform_to_canvas_dynamic(pt, country_polygons, map_w, map_h) for pt in poly
+                        ]
                         item = dpg.draw_polygon(
                             points=transformed_points,
                             color=(255, 255, 255, 255),
@@ -169,18 +174,25 @@ def create_map_window(country_polygons, initial_viewport_width=1200, initial_vie
                         )
                         country_items.setdefault(country_name, []).append(item)
 
-            # Control panel
-            control_w = initial_viewport_width - map_w
-            control_h = initial_viewport_height
-            with dpg.group(horizontal=False) as control_panel:
-                dpg.add_text("Controls")
-                color_settings = {"multiplier": 1.0}
+            # Control panel in a tab bar below the map now
+            control_h = initial_viewport_height - map_h
+            with dpg.tab_bar():
+                with dpg.tab(label="Control Panel"):
+                    with dpg.group(horizontal=False) as control_panel:
+                        dpg.add_text("Controls")
+                        color_settings = {"multiplier": 1.0}
 
-                # Example slider
-                def color_multiplier_callback(sender, app_data, user_data):
-                    color_settings["multiplier"] = app_data
-                dpg.add_slider_float(label="Color intensity", min_value=0.1, max_value=3.0,
-                                     default_value=1.0, callback=color_multiplier_callback)
+                        # Example slider
+                        def color_multiplier_callback(sender, app_data, user_data):
+                            color_settings["multiplier"] = app_data
+
+                        dpg.add_slider_float(
+                            label="Color intensity",
+                            min_value=0.1,
+                            max_value=3.0,
+                            default_value=1.0,
+                            callback=color_multiplier_callback
+                        )
 
     return map_drawlist, control_panel, country_items
 
@@ -229,44 +241,53 @@ def get_country_frequency(country_name):
             country_result = conn.execute(QUERY_TUPLE_RECORD_STMT, {"country_name": country_name}).fetchone()
 
             if not country_result:
-                print(f"ERROR: Country '{country_name}' not found in countries table.")
                 return None
+                #print(f"ERROR: Country '{country_name}' not found in countries table.")
+                
 
             geoname_id = country_result[0]
-            print(f"Found country '{country_name}' with ID {geoname_id}.")
+            #print(f"Found country '{country_name}' with ID {geoname_id}.")
 
             # 2) Fetch the frequency from packets table
             packet_result = conn.execute(PACKET_SUB_SEARCH_FREQ_STMT, {"geoname_id": geoname_id}).fetchone()
 
             if not packet_result:
-                print(f"No packet record found for country ID {geoname_id}.")
-                return None
+                #print(f"No packet record found for country ID {geoname_id}.")
+                return 0
 
             frequency = packet_result[0]
-            print(f"Frequency for country '{country_name}' is {frequency}.")
+            #print(f"Frequency for country '{country_name}' is {frequency}.")
             return frequency
 
-def live_update_loop(country_items, color_multiplier=1.0, freq_max=1.0):
+def live_update_loop(country_items, freq_max=10.0):
     while dpg.is_dearpygui_running():
         for country, items in country_items.items():
             freq = get_country_frequency(country)
-
             if freq is None:
                 continue
+            
+            print(f"Updating {country} for {freq}")
 
-            # Normalize to 0–1
-            norm_freq = min(freq / freq_max, 1.0)
+            if freq == 0:
+                # No data -> white
+                color = (255, 255, 255, 255)
+            else:
+                # Normalize to 0–1 range
+                step = min(freq / freq_max, 1.0)
 
-            # Wide gradient: green -> yellow -> red
-            r = int(255 * norm_freq * color_multiplier)
-            g = int(255 * (1 - norm_freq) * color_multiplier)
-            b = 0  # keep pure warm/cool tones for a clear gradient
-            color = (r, g, b, 255)
+                # Interpolate hue: green (120°) → red (0°)
+                hue = (120 * (1 - step)) / 360.0
+                r_f, g_f, b_f = colorsys.hsv_to_rgb(hue, 1, 1)
 
+                # Convert floats to 0-255
+                r, g, b = int(r_f * 255), int(g_f * 255), int(b_f * 255)
+                color = (r, g, b, 255)
+
+            # Update polygons
             for item in items:
                 dpg.configure_item(item, fill=color)
 
-        time.sleep(0.5)
+        time.sleep(0.1)
     
 
 
@@ -283,7 +304,7 @@ def main():
     setup_resize_handler(map_drawlist, control_panel, country_items, country_polygons)
     print("resize setup")
     # Setup the map updater
-    threading.Thread(target=live_update_loop, args=(country_items,), daemon=True).start()
+    threading.Thread(target=live_update_loop, args=(country_items,10), daemon=True).start()
     print("threading started")
     # 4) Run the GUI
     run_gui()
