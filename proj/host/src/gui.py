@@ -1,24 +1,25 @@
+"""
+@file seperate application for running the heat map GUI
+"""
+# Standard libraries we need
 import threading
 import time
 import random
 import numpy as np
-import geopandas as gpd
-import geodatasets
 
+
+# Package libraries we need
+import geopandas as gpd
 import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
-from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST
+from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT
 from db import initalize_engines, get_geoip_session
 
 
-# Load stuff from the databases we need
-from sqlalchemy import text
+# Load stuff from the databases dby.py file we need
 geoip_session = get_geoip_session()
-QUERY_COUNTRIES_RECORD_STMT = text(
-    "SELECT country_name, geoname_id FROM countries"
-)
 country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
 country_list = [(row[0], row[1]) for row in country_records]
 
@@ -31,39 +32,52 @@ print(world.head())
 print(world.columns.tolist())
 
 
-# Convert to dictionary for easy lookup
-country_fix_dict = dict(COUNTRY_FIX_LIST)
 
-print("Fixing country names from country_fix_list...")
-for idx, row in world.iterrows():
-    country_name = row["ADMIN"]
-    if country_name in country_fix_dict:
-        fixed_name = country_fix_dict[country_name]
-        world.at[idx, "ADMIN"] = fixed_name
-        print(f"Fixed: {country_name} -> {fixed_name}")
-print("Checking for matches between countries table and world map supported country polygons...")
-for _, row in world.iterrows():
-    country_name = row["ADMIN"]
-    
-    if country_name is None:
-        print("ERROR: None value in world map")
-        continue
 
-    country_name_lower = country_name.lower()
+"""
+@brief Go through the list of countries we can render from the `.shp` 
+file and fix them from names that we have major IP block record for
+"""
+def fix_shp_file_country_names():
+    # Convert to fix list to a dictonary to make lookup faster
+    country_fix_dict = dict(COUNTRY_FIX_LIST)
+    print("Fixing country names from country_fix_list...")
+    # Go through every country the map supports
+    for idx, row in world.iterrows():
+        country_name = row["ADMIN"]
+        # If we hit finding a match, replace
+        if country_name in country_fix_dict:
+            fixed_name = country_fix_dict[country_name]
+            world.at[idx, "ADMIN"] = fixed_name
+            print(f"Fixed: {country_name} -> {fixed_name}")
 
-    # Check for a match in country_list safely
-    matched = False
-    for listed_country, _ in country_list:
-        if listed_country is None:  # skip None entries
+
+"""
+@brief check that every country in the '.shp' file matches at least one name 
+in our major IP block table
+"""
+def check_all_countries_match_block():
+    print("Checking for matches between countries table and world map supported country polygons")
+    for _, row in world.iterrows():
+        country_name = row["ADMIN"]
+        if country_name is None:
+            # Country wasnt found log it to the console
+            print("ERROR: None value in world map")
             continue
-        if country_name_lower == listed_country.lower():
-            matched = True
-            break
-
-    if matched:
-        print(f"Matched! {country_name}")
-    else:
-        print(f"ERROR: {country_name}")
+        country_name_lower = country_name.lower()
+        # Check for a match in country_list
+        matched = False
+        for listed_country, _ in country_list:
+            if listed_country is None:  # skip None entries
+                continue
+            if country_name_lower == listed_country.lower():
+                matched = True
+                break
+        # Print the result
+        if matched:
+            print(f"Matched! {country_name}")
+        else:
+            print(f"ERROR: {country_name}")
 
 
 # Simplify polygons to reduce vertex count (important for performance!)
