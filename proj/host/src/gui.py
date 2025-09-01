@@ -15,13 +15,7 @@ from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
 from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT, QUERY_TUPLE_RECORD_STMT, PACKET_SUB_SEARCH_FREQ_STMT
-from db import initalize_engines, get_geoip_session
-
-
-# Load stuff from the databases dby.py file we need
-geoip_session = get_geoip_session()
-country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
-country_list = [(row[0], row[1]) for row in country_records]
+from db import initalize_engines, get_geoip_session, PACKET_LOCK
 
 
 # Load and preprocess country shapes
@@ -56,6 +50,10 @@ in our major IP block table
 """
 def check_all_countries_match_block():
     print("Checking for matches between countries table and world map supported country polygons")
+    # Load stuff from the databases dby.py file we need
+    geoip_session = get_geoip_session()
+    country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
+    country_list = [(row[0], row[1]) for row in country_records]
     for _, row in world.iterrows():
         country_name = row["ADMIN"]
         if country_name is None:
@@ -225,27 +223,28 @@ def run_gui():
 # =============================
 # Function to fetch frequency for a given country name
 def get_country_frequency(country_name):
-    with get_geoip_session() as conn:
-        # 1) Fetch the country's ID
-        country_result = conn.execute(QUERY_TUPLE_RECORD_STMT, {"country_name": country_name}).fetchone()
-        
-        if not country_result:
-            print(f"ERROR: Country '{country_name}' not found in countries table.")
-            return None
-        
-        geoname_id = country_result[0]
-        print(f"Found country '{country_name}' with ID {geoname_id}.")
+    with PACKET_LOCK:
+        with get_geoip_session() as conn:
+            # 1) Fetch the country's ID
+            country_result = conn.execute(QUERY_TUPLE_RECORD_STMT, {"country_name": country_name}).fetchone()
 
-        # 2) Fetch the frequency from packets table
-        packet_result = conn.execute(PACKET_SUB_SEARCH_FREQ_STMT, {"geoname_id": geoname_id}).fetchone()
-        
-        if not packet_result:
-            print(f"No packet record found for country ID {geoname_id}.")
-            return None
-        
-        frequency = packet_result[0]
-        print(f"Frequency for country '{country_name}' is {frequency}.")
-        return frequency
+            if not country_result:
+                print(f"ERROR: Country '{country_name}' not found in countries table.")
+                return None
+
+            geoname_id = country_result[0]
+            print(f"Found country '{country_name}' with ID {geoname_id}.")
+
+            # 2) Fetch the frequency from packets table
+            packet_result = conn.execute(PACKET_SUB_SEARCH_FREQ_STMT, {"geoname_id": geoname_id}).fetchone()
+
+            if not packet_result:
+                print(f"No packet record found for country ID {geoname_id}.")
+                return None
+
+            frequency = packet_result[0]
+            print(f"Frequency for country '{country_name}' is {frequency}.")
+            return frequency
 
 def live_update_loop(country_items, color_multiplier=1.0, freq_max=1.0):
     while dpg.is_dearpygui_running():
