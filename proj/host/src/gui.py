@@ -124,7 +124,7 @@ def setup_country_polygons():
 @brief Dynamically transform a geographic point to the drawlist coordinates.
 In other words slowly update the guy elements like the map if we change the size of the window
 """
-def transform_to_canvas_dynamic(point, polys, drawlist_w, drawlist_h, padding=50):
+def transform_to_canvas_dynamic(point, polys, drawlist_w, drawlist_h, padding=0):
     
     all_x = np.concatenate([np.array([pt[0] for pt in poly]) for poly_set in polys.values() for poly in poly_set])
     all_y = np.concatenate([np.array([pt[1] for pt in poly]) for poly_set in polys.values() for poly in poly_set])
@@ -133,12 +133,18 @@ def transform_to_canvas_dynamic(point, polys, drawlist_w, drawlist_h, padding=50
     bbox_width = x_max - x_min
     bbox_height = y_max - y_min
 
-    x, y = point
-    scale_x = (drawlist_w - 2*padding) / bbox_width
-    scale_y = (drawlist_h - 2*padding) / bbox_height
+    # Scale to fill entire drawlist
+    scale_x = drawlist_w / bbox_width
+    scale_y = drawlist_h / bbox_height
     scale = min(scale_x, scale_y)
-    x_new = (x - x_min) * scale + padding
-    y_new = (y_max - y) * scale + padding
+
+    # Center map in the drawlist
+    x_offset = (drawlist_w - bbox_width * scale) / 2
+    y_offset = (drawlist_h - bbox_height * scale) / 2
+
+    x, y = point
+    x_new = (x - x_min) * scale + x_offset
+    y_new = (y_max - y) * scale + y_offset   # flip Y to match canvas
     return (x_new, y_new)
 
 """
