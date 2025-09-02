@@ -213,9 +213,8 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
                         # Title text will now follow the theme (white)
                         dpg.add_text("Controls")  
                         
-                          # Sniffer toggle button
+                        # Define the sniffer toggle button
                         sniffer_state = {"running": True}
-
                         def toggle_sniffer_callback():
                             if sniffer_state["running"]:
                                 stop_sniffer_thread()
@@ -226,10 +225,22 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
                                 dpg.set_item_label("sniffer_button", "Stop Sniffer")
                                 sniffer_state["running"] = True
 
-                        dpg.add_button(label="Stop Sniffer", callback=toggle_sniffer_callback, tag="sniffer_button")
+                        # Add the sniffer button to the GUI control panel
+                        dpg.add_button(label="Start Sniffer", callback=toggle_sniffer_callback, tag="sniffer_button")
 
-                        color_settings = {"multiplier": 1.0}
-            
+                        # define the reset button
+                        def reset_callback():
+                            # Kill the sniffer thread if its running
+                            stop_sniffer_thread()  
+                            # reset all the databases
+                            # @note : Make a new function later to only reset the packet database
+                            initalize_engines()    
+                            dpg.set_item_label("sniffer_button", "Start Sniffer")
+                            sniffer_state["running"] = False
+                            print("[Reset] Database reset and sniffer stopped.")
+                        # Add the reset button to the GUI control panel
+                        dpg.add_button(label="Reset", callback=reset_callback, tag="reset_button")
+                        #color_settings = {"multiplier": 1.0}
                         ## Example slider
                         #def color_multiplier_callback(sender, app_data, user_data):
                         #    color_settings["multiplier"] = app_data
@@ -313,7 +324,7 @@ def live_update_loop(country_items, freq_max=10.0):
             if freq is None:
                 continue
             
-            print(f"Updating {country} for {freq}")
+            #print(f"Updating {country} for {freq}")
 
             if freq == 0:
                 # No data -> white
