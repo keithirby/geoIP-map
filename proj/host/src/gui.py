@@ -16,6 +16,7 @@ import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
+from main import start_sniffer_thread, stop_sniffer_thread
 from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT, QUERY_TUPLE_RECORD_STMT, PACKET_SUB_SEARCH_FREQ_STMT
 from db import initalize_engines, get_geoip_session, PACKET_LOCK
 
@@ -194,7 +195,6 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
             # Control panel in a tab bar below the map now
             control_h = initial_viewport_height - map_h
             # Color theme for the control panel
-            # Color theme for the control panel
             with dpg.theme() as control_panel_theme:
                 with dpg.theme_component(dpg.mvAll):
                     dpg.add_theme_color(dpg.mvThemeCol_WindowBg, (80, 80, 80, 255))     # matte grey background
@@ -212,20 +212,35 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
             
                         # Title text will now follow the theme (white)
                         dpg.add_text("Controls")  
-            
+                        
+                          # Sniffer toggle button
+                        sniffer_state = {"running": True}
+
+                        def toggle_sniffer_callback():
+                            if sniffer_state["running"]:
+                                stop_sniffer_thread()
+                                dpg.set_item_label("sniffer_button", "Start Sniffer")
+                                sniffer_state["running"] = False
+                            else:
+                                start_sniffer_thread()
+                                dpg.set_item_label("sniffer_button", "Stop Sniffer")
+                                sniffer_state["running"] = True
+
+                        dpg.add_button(label="Stop Sniffer", callback=toggle_sniffer_callback, tag="sniffer_button")
+
                         color_settings = {"multiplier": 1.0}
             
-                        # Example slider
-                        def color_multiplier_callback(sender, app_data, user_data):
-                            color_settings["multiplier"] = app_data
-            
-                        dpg.add_slider_float(
-                            label="Color intensity",
-                            min_value=0.1,
-                            max_value=3.0,
-                            default_value=1.0,
-                            callback=color_multiplier_callback
-                        )
+                        ## Example slider
+                        #def color_multiplier_callback(sender, app_data, user_data):
+                        #    color_settings["multiplier"] = app_data
+                        #
+                        #dpg.add_slider_float(
+                        #    label="Color intensity",
+                        #    min_value=0.1,
+                        #    max_value=3.0,
+                        #    default_value=1.0,
+                        #    callback=color_multiplier_callback
+                        #)
             
     return map_drawlist, control_panel, country_items
 
@@ -277,7 +292,6 @@ def get_country_frequency(country_name):
                 return None
                 #print(f"ERROR: Country '{country_name}' not found in countries table.")
                 
-
             geoname_id = country_result[0]
             #print(f"Found country '{country_name}' with ID {geoname_id}.")
 
@@ -320,7 +334,7 @@ def live_update_loop(country_items, freq_max=10.0):
             for item in items:
                 dpg.configure_item(item, fill=color)
 
-        time.sleep(0.1)
+        time.sleep(1)
     
 
 
