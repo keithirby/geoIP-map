@@ -16,9 +16,23 @@ import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
-from main import start_sniffer_thread, stop_sniffer_thread
+from thread_control import (
+    start_sniffer_thread,
+    stop_sniffer_thread,
+    start_reset_thread,
+    stop_reset_thread
+)
+
 from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT, QUERY_TUPLE_RECORD_STMT, PACKET_SUB_SEARCH_FREQ_STMT
-from db import initalize_engines, get_geoip_session, PACKET_LOCK
+from db import initalize_engines, get_geoip_session, PACKET_LOCK, reset_packet_table
+from thread_control import (
+    main,
+    reset_config,
+    start_sniffer_thread,
+    stop_sniffer_thread,
+    start_reset_thread,
+    stop_reset_thread
+)
 
 
 # Load and preprocess country shapes
@@ -149,10 +163,10 @@ def transform_to_canvas_dynamic(point, polys, drawlist_w, drawlist_h, padding=0)
     return (x_new, y_new)
 
 """
-@brief Dynamically transform a geographic point to the drawlist coordinates.
-In other words slowly update the guy elements like the map if we change the size of the window
+@brief Dynamically transform a geographic point to the drawlist coordinates and add it to our GUI window.
+Plus initalize all our interactable elements like buttons.
 """
-def create_map_window(country_polygons, initial_viewport_width=1920, initial_viewport_height=1080, control_panel_height_ratio=0.25):
+def create_window_gui(country_polygons, initial_viewport_width=1920, initial_viewport_height=1080, control_panel_height_ratio=0.25):
     dpg.create_context()
     # Create viewport
     dpg.create_viewport(title="Packet Map", width=initial_viewport_width, height=initial_viewport_height)
@@ -232,26 +246,30 @@ def create_map_window(country_polygons, initial_viewport_width=1920, initial_vie
                         def reset_callback():
                             # Kill the sniffer thread if its running
                             stop_sniffer_thread()  
-                            # reset all the databases
-                            # @note : Make a new function later to only reset the packet database
-                            initalize_engines()    
+                            # reset the packet database 
+                            reset_packet_table()    
                             dpg.set_item_label("sniffer_button", "Start Sniffer")
                             sniffer_state["running"] = False
                             print("[Reset] Database reset and sniffer stopped.")
                         # Add the reset button to the GUI control panel
                         dpg.add_button(label="Reset", callback=reset_callback, tag="reset_button")
-                        #color_settings = {"multiplier": 1.0}
-                        ## Example slider
-                        #def color_multiplier_callback(sender, app_data, user_data):
-                        #    color_settings["multiplier"] = app_data
-                        #
-                        #dpg.add_slider_float(
-                        #    label="Color intensity",
-                        #    min_value=0.1,
-                        #    max_value=3.0,
-                        #    default_value=1.0,
-                        #    callback=color_multiplier_callback
-                        #)
+
+                        # Define the reset timer toggle button
+                        dpg.add_separator()
+                        dpg.add_text("Reset Timer")
+                        dpg.add_input_int(
+                            label="Interval (sec)",
+                            default_value=reset_config["timer"],
+                            min_value=5, max_value=3600,
+                            callback=lambda s, a: reset_config.update({"timer": a}),
+                            step=1
+                        )
+                        dpg.add_checkbox(
+                            label="Enable Auto Reset",
+                            default_value=reset_config["enabled"],
+                            callback=lambda s, a: reset_config.update({"enabled": a})
+                        )
+
             
     return map_drawlist, control_panel, country_items
 
@@ -356,9 +374,13 @@ def main():
     world, country_polygons = setup_country_polygons()
     print("polygons done")
     # 2) Create map window
-    map_drawlist, control_panel, country_items = create_map_window(country_polygons)
+    map_drawlist, control_panel, country_items = create_window_gui(country_polygons)
     print("finished map windows")
-    # 3) Setup viewport resize handler
+    # 3) Start all the callback (buttons and interactable elements) threads for the GUI
+    
+    # 3) Setup viewport resize handler, this one is ambitious and mostly doesnt work, 
+    # Easiest way to get the correct window size is set the dimension parameters in 
+    # create_window_gui
     setup_resize_handler(map_drawlist, control_panel, country_items, country_polygons)
     print("resize setup")
     # Setup the map updater
