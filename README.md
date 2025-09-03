@@ -10,7 +10,7 @@
 2. host: The container receiving packets
 
 - A GUI is now implemented for showing packet frequencies from major countries
-![Sender Diagram](images/v2/gui-example.gif)
+![Sender Diagram](images/v2/gui-demo.mp4)
 - A selected amount of countries were sent from the sender to test the gradient more easily
 
 #### Sender / Remote
@@ -23,13 +23,13 @@
 
 #### Receiver / Host
 - receiver (host container) can read the IP packet, decode the payload, and **match** the payloads passed IP address + cidr mask to a country from its own database (geoIP).
-- receiver also appends all packets recieved to a new table called packet table. This table keeps track of the of two things: the geoname_id and the # of packets recieved. The # of packets (column frequency in the packet table) is also decremnted by anotehr thread every `FREQ_MIN` seconds defined in my `config.py` file. 
+- receiver also appends all packets recieved to a new table called packet table. This table keeps track of the of two things: the geoname_id and the # of packets recieved. The # of packets (column frequency in the packet table) is also reset by a GUI control button when the user decides to click the `reset` button. 
 
 - Both devices can send and recognize IP packets "sent" from the same country. 
 
 - Both now use a single database with two tables in it.
 
-- The receiver / host app now also has a seperate GUI that can be started to count packet frequencies for a country. Packet decrement intervals can also be setup to lower the countries gradient counts as time goes on.
+- The receiver / host app now also has a seperate GUI that can be started to count packet frequencies for a country, and display a packet gradient. Users can choose when to start and stop listening for packets + reset the countries packet frequency colors.
 
 ##### Code Flow Diagram for sniff packet sniffer
 
