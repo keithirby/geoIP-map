@@ -16,13 +16,6 @@ import dearpygui.dearpygui as dpg
 from shapely.geometry import Polygon, MultiPolygon
 
 # Local Libraries we need 
-from thread_control import (
-    start_sniffer_thread,
-    stop_sniffer_thread,
-    start_reset_thread,
-    stop_reset_thread
-)
-
 from config import NATURALEARTH_LOWRES_PATH, COUNTRY_FIX_LIST, QUERY_COUNTRIES_RECORD_STMT, QUERY_TUPLE_RECORD_STMT, PACKET_SUB_SEARCH_FREQ_STMT
 from db import initalize_engines, get_geoip_session, PACKET_LOCK, reset_packet_table
 from thread_control import (
