@@ -36,20 +36,31 @@ RUN apt-get update && apt-get install -y \
     sqlite3 \
     iputils-ping \
     iproute2 \
-    libpcap0.8-dev \ 
+    libpcap0.8-dev \
     tcpdump \
+    libosmesa6 \
+    mesa-utils \
+    libgl1 \
+    libgl1-mesa-dri \
+    libglu1-mesa \
+    x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install specific Python packages
 RUN pip install \
     scapy \
     pandas \
-    sqlalchemy
+    sqlalchemy \
+    geopandas \
+    geodatasets \ 
+    dearpygui
+
 
 WORKDIR /app
 EOF
 
-    docker build -t $IMAGE_NAME -f "$PROJ_DIR/Dockerfile.scapy" "$PROJ_DIR"
+    docker build --network=host -t $IMAGE_NAME -f "$PROJ_DIR/Dockerfile.scapy" "$PROJ_DIR"
+    echo "[*] Docker image $IMAGE_NAME built successfully"
 }
 
 start_containers() {
@@ -59,17 +70,27 @@ start_containers() {
     docker network rm $NET_NAME 2>/dev/null || true
     docker network create --subnet=$SUBNET $NET_NAME || true
 
+    # Allow X11 forwarding from host to container
+    xhost +local:docker
+    # Make sure mesa is using CPU rendering because 
+    # the docker container wont have access to a GPU
+    export LIBGL_ALWAYS_SOFTWARE=1
+
     # Run receiver container
     docker run -dit --rm \
         --net $NET_NAME --ip $RECEIVER_IP \
         --name $RECEIVER_NAME \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v "$(pwd)/$PROJ_DIR/$RECEIVER_NAME:/app" \
         $IMAGE_NAME tail -f /dev/null
-
+    
     # Run sender container
     docker run -dit --rm \
         --net $NET_NAME \
         --name $SENDER_NAME \
+        -e DISPLAY=$DISPLAY \
+        -v /tmp/.X11-unix:/tmp/.X11-unix \
         -v "$(pwd)/$PROJ_DIR/$SENDER_NAME:/app" \
         $IMAGE_NAME tail -f /dev/null
 
