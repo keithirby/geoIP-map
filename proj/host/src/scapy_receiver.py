@@ -52,13 +52,16 @@ def handle_pkt(pkt, geoip_session, increment_packet_freq):
             #print(f"Received packet from SRC IP {pkt[IP].src} | payload {payload}")
             match_country_to_address(payload, geoip_session, increment_packet_freq)
 
-def start_sniffer(geoip_session, increment_packet_freq):
-    """
-    Starts sniffing and passes session objects to handle_pkt().
-    """
+"""
+@brief sniff for packets until told to stop by the sniffer thread
+"""
+def start_sniffer(geoip_session, increment_packet_freq, SNIFFER_STOP_EVENT):
+    from scapy.all import sniff
+
     sniff(
         filter="tcp",
-        prn=lambda pkt: handle_pkt(pkt, geoip_session, increment_packet_freq)
+        prn=lambda pkt: handle_pkt(pkt, geoip_session, increment_packet_freq),
+        stop_filter=lambda pkt: SNIFFER_STOP_EVENT.is_set()
     )
 
 

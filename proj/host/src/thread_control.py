@@ -38,13 +38,15 @@ def stop_reset_thread():
 
 
 def sniffer_loop():
-    """Loop that runs the sniffer until stop event is set."""
     geoip_session = get_geoip_session()
     print("[Sniffer] Session created")
-    while not SNIFFER_STOP_EVENT.is_set():
-        start_sniffer(geoip_session, increment_packet_freq)
-    geoip_session.close()
-    print("[Sniffer] Session closed")
+    try:
+        while not SNIFFER_STOP_EVENT.is_set():
+            # Use a timeout or non-blocking packet sniff call
+            start_sniffer(geoip_session, increment_packet_freq, SNIFFER_STOP_EVENT)
+    finally:
+        geoip_session.close()
+        print("[Sniffer] Session closed")
 
 
 def start_sniffer_thread():
@@ -60,13 +62,15 @@ def start_sniffer_thread():
 
 
 def stop_sniffer_thread():
-    """Stop the running sniffer thread."""
-    if not SNIFFER_THREAD:
-        return
-    print("[Sniffer] Stopping...")
-    SNIFFER_STOP_EVENT.set()
-    SNIFFER_THREAD.join(timeout=2)
-    print("[Sniffer] Stopped")
+    global SNIFFER_THREAD
+    if SNIFFER_THREAD and SNIFFER_THREAD.is_alive():
+        print("[Sniffer] Stopping...")
+        SNIFFER_STOP_EVENT.set()
+        SNIFFER_THREAD.join(timeout=2)  # Will only finish if thread checks event
+        if SNIFFER_THREAD.is_alive():
+            print("[Sniffer] Thread did not exit! It is likely blocked in start_sniffer()")
+        else:
+            print("[Sniffer] Stopped")
 
 def main(): 
         # 2. Create sessions to access the geoIP database database
