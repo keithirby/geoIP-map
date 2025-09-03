@@ -48,7 +48,7 @@ file and fix them from names that we have major IP block record for
 def fix_shp_file_country_names():
     # Convert to fix list to a dictonary to make lookup faster
     country_fix_dict = dict(COUNTRY_FIX_LIST)
-    print("Fixing country names from country_fix_list...")
+    #print("Fixing country names from country_fix_list...")
     # Go through every country the map supports
     for idx, row in world.iterrows():
         country_name = row["ADMIN"]
@@ -56,7 +56,7 @@ def fix_shp_file_country_names():
         if country_name in country_fix_dict:
             fixed_name = country_fix_dict[country_name]
             world.at[idx, "ADMIN"] = fixed_name
-            print(f"Fixed: {country_name} -> {fixed_name}")
+            #print(f"Fixed: {country_name} -> {fixed_name}")
 
 
 """
@@ -64,7 +64,7 @@ def fix_shp_file_country_names():
 in our major IP block table
 """
 def check_all_countries_match_block():
-    print("Checking for matches between countries table and world map supported country polygons")
+    #print("Checking for matches between countries table and world map supported country polygons")
     # Load stuff from the databases dby.py file we need
     geoip_session = get_geoip_session()
     country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
@@ -85,10 +85,10 @@ def check_all_countries_match_block():
                 matched = True
                 break
         # Print the result
-        if matched:
-            print(f"Matched! {country_name}")
-        else:
-            print(f"ERROR: {country_name}")
+        #if matched:
+        #    print(f"Matched! {country_name}")
+        #else:
+        #    print(f"ERROR: {country_name}")
 
 # =============================
 # ------- Map  setup ----------
@@ -225,10 +225,20 @@ def create_window_gui(country_polygons, initial_viewport_width=1920, initial_vie
                         # Title text will now follow the theme (white)
                         dpg.add_text("Controls")  
                         
-                        # Add our controls from gui-controls.py
-                        sniffer_state, sniffer_drawlist = create_sniffer_toggle(control_panel)
-                        create_reset_button(control_panel, sniffer_state, sniffer_drawlist)
-                        create_timer_controls(control_panel, reset_config)
+                        with dpg.table(header_row=False, borders_innerV=False, borders_innerH=False):
+                            dpg.add_table_column()  # single column for stacking
+
+                            with dpg.table_row():
+                                with dpg.group(horizontal=False):
+                                   sniffer_state, sniffer_drawlist, toggle_draw_fn = create_sniffer_toggle(dpg.last_item())
+
+                            with dpg.table_row():
+                                with dpg.group(horizontal=False):
+                                    create_reset_button(dpg.last_item(), sniffer_state, sniffer_drawlist, toggle_draw_fn)
+
+                            with dpg.table_row():
+                                with dpg.group(horizontal=False):
+                                    create_timer_controls(dpg.last_item(), reset_config)
 
             
     return map_drawlist, control_panel, country_items
