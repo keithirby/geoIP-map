@@ -1,6 +1,6 @@
 import threading
 import time
-from db import get_geoip_session, increment_packet_freq, reset_packet_table
+from db import get_geoip_session, increment_packet_freq, reset_packet_table, PACKET_DELETE_ALL_STMT
 from scapy_receiver import start_sniffer
 from config import DECREMENT_INTERVAL
 

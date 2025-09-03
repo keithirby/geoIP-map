@@ -33,12 +33,18 @@ PACKET_LOCK = Lock()
 # Common database statements (commands)
 #-- Used by decrement_packet_frequencies()--#
 # Search for all packet records and return the records with geoname_id and frequency
-PACKET_SUB_SEARCH_FREQ_STMT = text(
-    "SELECT geoname_id, frequency FROM packet"
-)
+# Not in use in this version
+#PACKET_SUB_SEARCH_FREQ_STMT = text(
+#    "SELECT geoname_id, frequency FROM packet"
+#)
 # Subtract a packet table records frequency
-PACKET_SUB_FREQU_STMT = text(
-     "UPDATE packet SET frequency = :frequency WHERE geoname_id = :gid"
+# Not in use in this version
+#PACKET_SUB_FREQU_STMT = text(
+#     "UPDATE packet SET frequency = :frequency WHERE geoname_id = :gid"
+#)
+# Delete all records from the packet table
+PACKET_DELETE_ALL_STMT = text(
+    "DELETE FROM packet"
 )
 #-- Used by increment_packet_freq()--#
 PACKET_ADD_SEARCH_FREQ_STMT = text(
