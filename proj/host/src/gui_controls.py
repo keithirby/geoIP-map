@@ -1,13 +1,27 @@
+# Package libraries we need
 import dearpygui.dearpygui as dpg
+
+
+# Local libraries we need
+from thread_control import (
+    main,
+    reset_config,
+    start_sniffer_thread,
+    stop_sniffer_thread,
+    start_reset_thread,
+    stop_reset_thread
+)
+from db import reset_packet_table
 
 """
 @brief sniffer toggle switch to start and stop sniffing for packets
 """
 def create_sniffer_toggle(parent):
-    """Create a custom ON/OFF toggle for starting/stopping the sniffer."""
+    """Create a custom ON/OFF toggle for starting/stopping the sniffer with clickable drawlist."""
     sniffer_state = {"running": False}
 
     def draw_sniffer_toggle(drawlist):
+        # clear old drawings first
         dpg.delete_item(drawlist, children_only=True)
         is_on = sniffer_state["running"]
         bg_color = (150, 50, 255, 255) if is_on else (180, 180, 200, 255)
@@ -19,21 +33,22 @@ def create_sniffer_toggle(parent):
         dpg.draw_circle(center=(handle_x + 15, 20), radius=15, fill=(255, 255, 255, 255), parent=drawlist)
         dpg.draw_text((45, 12), label, size=16, color=text_color, parent=drawlist)
 
-    def toggle_sniffer(sender, app_data, user_data):
+    def toggle_sniffer(_, app_data):
+        # flip state
+        sniffer_state["running"] = not sniffer_state["running"]
+        # start or stop the sniffer thread
         if sniffer_state["running"]:
-            stop_sniffer_thread()
-            sniffer_state["running"] = False
-        else:
             start_sniffer_thread()
-            sniffer_state["running"] = True
-        draw_sniffer_toggle(user_data["drawlist"])
+        else:
+            stop_sniffer_thread()
+        draw_sniffer_toggle(sniffer_drawlist)  # ✅ use stored drawlist id here
 
+    # ✅ store drawlist id so callback can access it
     with dpg.drawlist(width=120, height=40, parent=parent) as sniffer_drawlist:
         draw_sniffer_toggle(sniffer_drawlist)
-
-    dpg.add_button(label="", width=120, height=40, callback=toggle_sniffer,
-                   user_data={"drawlist": sniffer_drawlist},
-                   tag="sniffer_toggle_button", parent=parent)
+        with dpg.item_handler_registry() as handler:
+            dpg.add_item_clicked_handler(callback=toggle_sniffer)
+        dpg.bind_item_handler_registry(sniffer_drawlist, handler)
 
     return sniffer_state, sniffer_drawlist
 
