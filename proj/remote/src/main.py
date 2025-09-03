@@ -67,6 +67,7 @@ def main():
     # 3. Make a list of all possible countries from countries table    
     country_records = geoip_session.execute(QUERY_COUNTRIES_RECORD_STMT).fetchall()
     country_list = [(row[0], row[1]) for row in country_records]
+    print(f"country list: {country_list}")
         
     # 4. start the background thread to update the packet table
     decrement_thread = threading.Thread(target=periodic_decrement, daemon=True)
@@ -101,7 +102,7 @@ def main():
             #Send the packet over the network
             send_packet(random_network, country_name)
         # Sleep for one second before querying another countries ip block
-        time.sleep(1)
+        time.sleep(0.1)
 
     # FINAL STEP: close the session
     geoip_session.close()
