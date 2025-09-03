@@ -111,51 +111,24 @@ def get_geoip_session():
 
 
 """!
-@brief Decrement all packet table record's frequency
+@brief Remove all records from the packet table
 """
-def decrement_packet_frequencies():
-    # 1. Lock the packet table lock for thread safety
+def reset_packet_table():
+    """
+    Clears the packet table completely, removing all records.
+    """
     with PACKET_LOCK:
-        # 2. Start a session for the packet table
         session = PACKET_SESSION_FACTORY()
-        # 3. Get a list all packet records in packet table
-        packet_records = session.execute(PACKET_SUB_SEARCH_FREQ_STMT).fetchall()
-        # 4. Go through the list of packet records and decrement by 1
-        for geoname_id, freq in packet_records:
-            try:
-                # If the frequency isnt already FREQ_MIN (typically 1) 
-                # decrement the frequency by 1
-                # Why do I do this? I want to know if a country has at least 
-                # sent one packet over the network
-                new_freq = max(freq - 1, FREQ_MIN)
-                # Stage the change
-                session.execute(
-                    PACKET_SUB_FREQU_STMT,
-                    {"frequency": new_freq, "gid": geoname_id},
-                )
-                # Push the changes to the table
-                session.commit()
-
-                #---DEBUG---#
-                # Fetch and print the updated record 
-                updated_row = session.execute(PACKET_SEARCH_ID_STMT, {"gid": geoname_id}).fetchone()
-                #if updated_row:
-                #    gid, freq_after, req_time_after = updated_row
-                #    if freq_after != freq:
-                #        print(f"[Decremented] record: geoname_id={gid}, freq: new:{freq_after} old:{freq}")
-                #    #else: 
-                #        #--DEBUG--# 
-                #        # This is used to keep track of countries with only 1 hit
-                #        #print(f"Frequency wasnt updated when incrementing a packet for geoname_id={gid}")
-                #else: 
-                #    print("Cant find a packet record after incrementing?")
-
-            except Exception as e:
-                # If the changes werent accepted roll back what might have happened
-                session.rollback()
-            finally:
-                # Close the session
-                session.close()
+        try:
+            # Delete all rows from the packet table
+            session.execute(PACKET_DELETE_ALL_STMT)
+            session.commit()
+            print("[Reset] All rows deleted from packet table.")
+        except Exception as e:
+            session.rollback()
+            print(f"[Error] Failed to delete packet table: {e}")
+        finally:
+            session.close()
 
 """!
 @brief Increment or create a record for a geonome_id  
