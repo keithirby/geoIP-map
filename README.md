@@ -10,7 +10,7 @@
 2. host: The container receiving packets
 
 - A GUI is now implemented for showing packet frequencies from major countries
-![Sender Diagram](images/v2/gui-demo.gif)
+![Sender Diagram](images/v2/demo.png)
 - A selected amount of countries were sent from the sender to test the gradient more easily
 
 #### Sender / Remote
